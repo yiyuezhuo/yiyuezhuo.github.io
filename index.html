@@ -1,82 +1,28 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE HTML>
+<html>
 <head>
-  <meta charset="utf-8">
-  <title>New game</title>
-  <link rel="stylesheet" href="jquery/jquery-ui.css">
-  <script src="jquery/jquery.js"></script>
-  <script src="jquery/jquery-ui.js"></script>
-  <script src="datatables/datatables.min.js"></script>
-  <link rel="stylesheet" href="datatables/datatables.min.css">
-
-  <style>
-  	.line
-  	{z-index:2;}
-  	.zone
-  	{z-index:4;}
-  	.text
-  	{z-index:3;}
-  	
-  </style>
-
-</head>
+<meta http-equiv="Content-Type" content="text/html;charset=UTF-8"></head>
+<link type="text/css" rel="stylesheet" href="static/test.css">
 <body>
+<h1> yiyuezhuo's site </h1>
 
-<!-- <div id="header" style="z-index:8888;background-color: rgb(50, 50, 200);position: absolute;">打飞机hello</div> -->
-<div id='map' class='oneShow mapBox' style="z-index:0"></div>
+<p> 这里放了一些项目地址的演示，由于是GitHub page所以可能很长时间才能看到这个页面。 </p>
 
-	<div id='assign' class='assign' style="z-index:10;position:absolute">
-		<p>
-			<label for="amount">number:</label>
-			<input type="text" id="amount" readonly style="border:0; color:#f6931f; font-weight:bold;">
-		</p>
-		<div id="slider-range"></div>
-		<a id="confirm">confirm</a>
-	</div>
-	<div id='choose' class='choose' style="z-index:10;position:absolute">
-		<a id='assign_a'>assign</a><br>
-		<a id='transport_a'>transport</a>
-	</div>
-	<div id='choose_e' class='choose_e' style="z-index:10;position:absolute">
-		<a id='battle_a'>fight!</a>
-		<a id='bliz_a'>bliz!</a>
-	</div>
-	
-<div id='toolbox' style="z-index:20;position:fixed;background-color: rgb(220, 220, 220)">
-	<p>A Nice Game </p>
-	<p>  by yiyuezhuo</p>
-	<a id="next_turn_a"> Next Turn</a><br><br>
-	<a id="save_load_a">save_load</a><br>
-	<div id="save_load_div">
-		<a id="save_a">save</a><br><br>
-		<!-- <a id="load_a">load</a><br> -->
-		
-		<input id='load_input' type="file" name="file" /><br>
-		<a id='load_a'>load</a><br><br>
-		<a id='fold_a'>fold</a>
-	</div>
-	<a id="tend_a">tend</a>
-	<!-- <img id='moe' src='1.jpg'> -->
-</div>
+<a href="games/project3/index.html"> 战国史移植project3 </a>
+<p>Chrome运行图示</p>
+<img src="static/p1.png">
+<p>
+游戏：
+这个剧本是从我改造铁与血（一个一战剧本）的战争与和平1805战国史剧本中提取的信息，开始视角在左上角什么都没有（有菜单，如果菜单太大可能是没有执行完初始化），你默认是瑞士，可以移到大概地图中间看到蓝色的那一片就是你。点击区域有assign与transport命令，assign可以移动你的部分兵力到邻格（这里没限制只能移动到邻格为了调试方便，但最好按这个规则，AI是遵守的。）点击敌方所在格，如果有你的兵力与敌方兵力在同一格可以选择fight命令或bliz命令，发起战斗占领该格。伤亡是用兰彻斯特方程结合兵力算的，基本上就是相同敌人数量你数量越多你自己伤亡越小。按菜单的next turn就可以下回合（可能会花一点时间）
+每回合每个地区自动产生1兵力，如果你觉得有一些机械的操作太烦可以用之前提到的transport命令，该命令可以将一个地区指向另一个地区（选择这个命令后点击另一个地区即可），每回合你开始操作前自动将能移动的兵力全移动到指向的地区。如果你度过了初始生存期可能会开始需要这个命令简化操作。
+项目与源代码：
+</p>
+<p>
+有两个部分,project1与project3，相比来说project1更像战国史原版，但project3开发的更长时间一点，是RISK风格的，也就是说每个地区有一个兵力数量，而不是将领驱动（project1是）的。
+这个项目本来是想做战国史剧本信息提取器(如此之多的结构化数据资源你懂得，虽然我对它的某些写法无力吐槽，比如id居然可以是字符，而生年这些简直坑爹)，一开始是想转成民国无双剧本，不过没人关注，个人觉得继续做民国无双剧本太耗人工就没做下去，然后是project1，这个本意就是模仿战国史机制，不过AI做的很烂（只会合在一起移动），代码结构更烂，后面就没动力继续写了。
+之后出于某个动机想写个也是点对点驱动但不是将领驱动的游戏，就把project1的1000多行代码中拿了300+行建了project3，自以为代码结构比以前好得多，也就能继续写下去了。project3只用了战国史剧本的势力和城的网络信息。
 
-<!--
-<div id="messageBox" class='oneShow messageBox'>
-	This the message box!you can get some message in this!
-	<a  href="javascript:click_box.message_back()">back!</a><br>
-	<a  href="javascript:click_box.message_caught()">caught state!</a><br>
-	<a  href="javascript:click_box.next_turn()">next turn</a>
-</div>
--->
-
-<!--
-<script src="shengyingbattle.js"></script>
--->
-
-
-<script src="scenario/Europe1805.js"></script>
-<script src="AI.js"></script>
-<script src="logic.js"></script>
-<script src="save3.js"></script>
+</p>
 
 </body>
 </html>
