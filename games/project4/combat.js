@@ -39,3 +39,72 @@ function result_draw(atk,def){
 	var d6=int(random.random()*6);
 	return result_distribution(atk,def)[d6];
 }
+function eliminate(unit_id){
+	var unit=unit_d[unit_id];
+	unit.destroy();
+}
+function routed(unit_id){
+	//这个函数应该实现成让一个单位单独从其所处位置撤退，撤退只能撤向空的无敌ZOC格。否则消灭。
+	var unit=unit_d[unit_id];
+	var loc=hex_d[[unit.m,unit.n]];
+	var ava=loc.nei.filter(function(nei_id){
+		if (hex_d[nei_id].unit===null && !(unit.zoc_map(nei_id)[unit.side])){
+			return true;
+		}
+		else{
+			return false;
+		}
+	})
+	if (ava.length===0){
+		eliminate(unit.id);
+	}
+	else{
+		var target=random.choice(ava);
+		unit.move_to(target[0],target[1],100, "linear",'no_focus');
+	}
+}
+function do_battle(atk_id_l,def_id_l){
+	//atk_l是参与进攻的单位id列表，def_l类似，虽然一般应该只有一个单位
+	var atk_l=atk_id_l.map(function(unit_id){return unit_d[unit_id];});
+	var def_l=def_id_l.map(function(unit_id){return unit_d[unit_id];});
+	//var ats=atk_l.reduce(function(u1,u2){return u1.combat+u2.combat;});
+	var ats=sum(atk_l.map(function(unit){return unit.combat}));
+	var dts=sum(def_l.map(function(unit){return unit.combat}));
+	//var dts=def_l.reduce(function(u1,u2){return u1.combat+u2.combat;});
+	var result=result_draw(ats,dts);
+	console.log('A:',ats,'D:',dts,'result',result);
+	result_do_list(result,atk_l,def_l);
+}
+function result_do_list(result,atk_l,def_l){
+	var dts=sum(def_l.map(function(unit){return unit.combat}));
+	switch(result){
+		case 'AE':
+			atk_l.forEach(function(unit){eliminate(unit.id)});
+			break;
+		case 'AR':
+			atk_l.forEach(function(unit){routed(unit.id)});
+			break;		
+		case 'DE':
+			def_l.forEach(function(unit){eliminate(unit.id)});
+			break;
+		case 'DR':
+			def_l.forEach(function(unit){routed(unit.id)});
+			break;
+		case 'EX':
+			def_l.forEach(function(unit){eliminate(unit.id)});
+			var ex_l=atk_l.slice();
+			random.shuffle(ex_l);
+			var exs=0;
+			var ax_l;
+			for(var i=0;i<ex_l.length;i++){
+				exs+=ex_l[i];
+				if (exs>dts){
+					break;
+					
+				}
+			}
+			ax_l=ex_l.slice(0,i);
+			ax_l.forEach(function(unit){eliminate(unit.id)});
+			break;
+	}
+}

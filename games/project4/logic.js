@@ -1,4 +1,5 @@
 var map_el=$('#map');
+map_el.css({'position':'absolute','left':'100px','top':'25px'});
 
 short_edge_length=50;
 hex_k=Math.cos(Math.PI/6)*2;
@@ -7,7 +8,15 @@ attach_edge=short_edge_length*1.5;
 default_hex_type='tip';
 counter_x=48;
 counter_y=48;
-
+function all(l){
+	return l.reduce(function(x,y){return x&&y});
+}
+function any(l){
+	return l.reduce(function(x,y){return x||y});
+}
+function copy(l){
+	return l.slice();
+}
 function int(n){
 	var m=Number(n);
 	if (m%1===0){
@@ -39,16 +48,40 @@ function min(l,key){
 	//console.log('index',index);
 	return l[index];
 }
-
+function other(l,atom){
+	for (var i=0;i<l.length;i++){
+		if (atom!=l[i]){
+			return l[i];
+		}
+	}
+}
 random=(function(){
 	module={};
 	module.random=Math.random;
-	module.choose=function(list){
+	module.choice=function(list){
 		var index=int(Math.random()*list.length);
 		return list[index];
 	};
+	module.shuffle=function(list){//
+		//python的shuffle是传引用的
+		var list_ing=list.slice();
+		console.log('list_ing',list_ing);
+		var list_build=[];
+		while(list_ing.length>0){
+			var index=int(Math.random()*list_ing.length);
+			list_build.push(list_ing[index]);
+			list_ing.splice(index,1);
+		}
+		for (var i=0;i<list.length;i++){
+			list[i]=list_build[i];
+		}
+		console.log('list_build',list_build);
+	}
 	return module;
 })();
+function sum(l){
+	return l.reduce(function(x,y){return x+y});
+}
 
 function distance(x1,y1,x2,y2){
 	return Math.sqrt(Math.pow(x1-x2,2)+Math.pow(y1-y2,2));
@@ -199,14 +232,51 @@ function Unit_click_box(){
 		console.log(unit.combat,unit.movement);
 		switch(this.state){
 			case 'start':
+				/*
 				this.choose_unit=unit;
+				this.reset_focus();
 				this.state='choosed';//目前实现的应该是此货处于此状态时点击另一个Hex就移动过去。
-				console.log('start->choosed');
+				*/
+				this.try_choose(unit);
+				//console.log('start->choosed');
 				break;
 			case 'choosed':
-				this.state='start';
-				console.log('choosed->start');
+				//this.state='start';用点击不可达区域方法跳出选择状态。这里立即切换选择罢了
+				//choose只允许选择当前阶段可控的单位,如果点击是不相匹配的单位，保持之前状态
+				/*
+				this.choose_unit=unit;
+				this.reset_focus();
+				this.state='choosed';
+				*/
+				this.try_choose(unit);
+				//this.choose_unit=undefined;
+				//console.log('choosed->start');
 				break;
+		}
+	}
+	this.reset_focus=function(){
+		var set=this.choose_unit.move_range();
+		this.remove_focus();
+		for(var ss in set){
+			var hex=hex_d[ss];
+			hex.highlight();
+		}
+	}
+	this.remove_focus=function(){
+		hex_l.forEach(function(hex){
+			if (hex.is_highlight){
+				hex.de_highlight();
+			}
+		})
+	}
+	this.try_choose=function(unit){
+		if (phase_box.is_choose_able(unit)){
+			this.choose_unit=unit;
+			this.reset_focus();
+			this.state='choosed';//目前实现的应该是此货处于此状态时点击另一个Hex就移动过去。
+		}
+		else{
+			console.log('you can not choose a unit in error phase');
 		}
 	}
 	
@@ -225,11 +295,91 @@ function Hex_click_box(){
 						break;
 					case 'choosed':
 						//unit_click_box.choose_unit.move_to(hex.x,hex.y);
-						unit_click_box.choose_unit.move_to_path(hex.x,hex.y);
+						if (unit_click_box.choose_unit.move_range()[[hex.m,hex.n]]!==undefined){
+							unit_click_box.choose_unit.move_to_path(hex.x,hex.y);
+							//hex_click_box.reset_focus();
+						}
+						else{
+							unit_click_box.state='start';
+							//unit_click_box.choose_unit=undefined;
+							unit_click_box.remove_focus();
+							console.log('Too long to move');
+						}
 				}
 				break;
 		}
 	}
+}
+function Phase_box(){
+	//这个“静态”对象应该处理有关阶段切换的有关逻辑，toolbox除了提供ui，主逻辑也应该由它执行。
+	this.turn=1;
+	this.state=[0,'ready'];
+	var that=this;
+	
+	this.next_phase=function(){//这货作为<a>的回调函数，this表示的是a标签，应该用that转为引用此对象
+		unit_click_box.remove_focus();
+		switch (that.state[1]){
+			case 'ready':
+				//this.state=[this.state[0],'move'];
+				that.change_phase_to(that.state[0],'move');
+				break;
+			case 'move':
+				//this.state=[this.state[0],'combat'];
+				that.change_phase_to(that.state[0],'combat');
+				break;
+			case 'combat':
+				//this.state=[this.next_player(),'ready'];
+				var next_player=player_d[that.next_player_id()]
+				that.change_phase_to(next_player.id,'ready');
+				next_player.ready();
+				//ready阶段，在你处理的时候，自动恢复阶段已经结束，这里处理的是其他东西，如资源调配
+				that.turn+=1;
+				break;
+		}
+	}
+	this.change_phase_to=function(side,state){
+		console.log(player_d[side].name+' '+state+' phase');
+		toolbox.show_widget.html(player_d[side].name+' '+state+' phase');
+		this.state=[side,state];
+		return 
+	}
+	this.next_player_id=function(){
+		return other([0,1],this.state[0]);
+	}
+	this.is_choose_able=function(unit){
+		return unit.side===this.state[0] && this.state[1]==='move';
+	}
+	//this.change_phase_to(0,'ready');
+}
+function Toolbox(){
+	this.el=$('#toolbox');
+	
+	this.el.css({'z-index':20,position:'fixed','background-color': 'rgb(250, 250, 250)'});
+	//this.el.append($('<div>HeHe</div>'));
+	var next_phase_a=$('#next_phase_a');//这个如果性能不过关就动态创建
+	next_phase_a.click(phase_box.next_phase);
+	this.show_widget=$('#turn_state');
+}
+function Player(side_id){
+	//player级的状态管理由这里处理,以及一些诸如选择全体算子的处理方法
+	this.side=side_id;
+	this.id=side_id;
+	var that=this;
+	this.all_unit=function(){
+		var l=[];
+		unit_l.forEach(function(unit){
+			if (unit.side===that.side){
+				l.push(unit);
+			}
+		})
+		return l;
+	}
+	this.ready=function(){
+		this.all_unit().forEach(function(unit){
+			unit.ready();
+		})
+	}
+	
 }
 function Hex(x,y,left,top){
 	this.x=x;
@@ -241,6 +391,7 @@ function Hex(x,y,left,top){
 	this.els=draw_hex(left,top,default_hex_type);
 	this.el=attach_hex(left,top);//这个就是应该保持传一样的值，具体的细节在里面调节
 	this.bound=create_bound(left,top);
+	this.is_highlight=false;
 	that=this;
 	this.el.click(function(){
 		//console.log('This is',x,y);
@@ -256,6 +407,14 @@ function Hex(x,y,left,top){
 		this.bound.forEach(function(bound){
 			bound.removeClass('unhighlight');
 			bound.addClass('highlight');
+			that.is_highlight=true;
+		})
+	}
+	this.de_highlight=function(){
+		this.bound.forEach(function(bound){
+			bound.removeClass('highlight');
+			bound.addClass('unhighlight');
+			that.is_highlight=false;
 		})
 	}
 	//hex_l.push(this);
@@ -305,6 +464,9 @@ function Unit(id){
 	this.combat=0;
 	this.movement=0;
 	this.mp=0;
+	this.short_path={};//该量在每次可达域计算时作为副作用重置，在寻路时使用
+	this.surplus_map={};
+	this.removed=false;
 	this.deco=function(){
 		this.els.l0.html(this.combat);
 		this.els.l2.html(this.movement);
@@ -313,18 +475,30 @@ function Unit(id){
 		this.mp=this.movement;
 	}
 	this.set_hex=function(m,n){
+		this.hex_move(this.m,this.n,m,n);
+		//hex_d[[this.m,this.n]].unit=null;
 		var left=mat[m][n].left+short_edge_length*Math.cos(Math.PI/6)-counter_x/2;
 		var top=mat[m][n].top+short_edge_length/2-counter_y/2;
 		this.el.css({left:left,top:top});
 		this.m=m;
 		this.n=n;
+		//hex_d[[m,n]].unit=this;
 	}
-	this.move_to=function(m,n,duration,pattern){
+	this.move_to=function(m,n,duration,pattern,mode){
+		//hex_d[[this.m,this.n]].unit=null;
+		this.hex_move(this.m,this.n,m,n);
 		var left=mat[m][n].left+short_edge_length*Math.cos(Math.PI/6)-counter_x/2;
 		var top=mat[m][n].top+short_edge_length/2-counter_y/2;
-		this.el.animate({left:left,top:top},duration,pattern);
+		if (mode==='no_focus'){
+			this.el.animate({left:left,top:top},duration,pattern);
+		}
+		else{
+			this.el.animate({left:left,top:top},duration,pattern,function(){console.log('wuyu');unit_click_box.reset_focus();});
+		}
 		this.m=m;
 		this.n=n;
+		//this.mp-=1;这个消耗不能在这个阶段得到正确的计算
+		//hex_d[[m,n]].unit=this;
 	}
 	this.el.click(function(){
 		unit_click_box.unit_click(this);
@@ -361,10 +535,19 @@ function Unit(id){
 			set_color(line,rgb,'background-color');
 		})
 	}
+	this.hex_move=function(m1,n1,m2,n2){
+		hex_d[[m1,n1]].unit=null;
+		hex_d[[m2,n2]].unit=this;
+	}
+	this.hex_pass=function(m1,n1,m2,n2){
+		hex_d[[m1,n1]].pass=null;
+		hex_d[[m2,n2]]=pass.this;
+	}
 	this.move_to_path=function(target_m,target_n){
 		var ing_m=this.m;
 		var ing_n=this.n;
 		var path=[];
+		/*
 		while(ing_m!==target_m || ing_n!==target_n){
 			//console.log(ing_m,ing_n);
 			var neis=hex_d[[ing_m,ing_n]].nei;
@@ -374,54 +557,96 @@ function Unit(id){
 			ing_m=target[0];
 			ing_n=target[1];
 		}
+		*/
+		if (this.short_path[[target_m,target_n]]!==undefined)
+			path=this.short_path[[target_m,target_n]].slice(1);
+		else{
+			console.log('No path cal to that');
+		}
+		
 		//console.log('path:',path);
 		path.forEach(function(node){
 			that.move_to(node[0],node[1],100, "linear");
 		})
+		this.mp=this.surplus_map[[target_m,target_n]];
 		//console.log(path);
 	}
+	this.zoc_map=function(mn){
+		var hex=hex_d[mn];
+		var map={}
+		var that=this;
+		player_l.forEach(function(player){
+			map[player.id]=any(hex.nei.map(function(nei_id){
+				var nei= hex_d[nei_id];
+				//console.log('mn',mn,'nei.unit',nei.unit,'nei.unit.side',nei.unit ? nei.unit.side:'unit=null','player.id',player.id)
+				if (nei.unit===null || nei.unit.side===player.id){
+					return false;
+				}
+				else{
+					return true;
+				}
+			}))
+		})
+		return map;
+	}
+	this.move_cost=function(mn,surplus){
+			var hex=hex_d[mn];
+			//console.log(this.zoc_map(mn));
+			if (hex.unit!==null && hex.unit.side!==this.side){
+				return Math.max(surplus+1,1);//从而trick的禁止移动
+			}
+			if (this.zoc_map(mn)[this.side]){//这里有个布尔代数trick重构时注意
+				//console.log('zoc_map',this.zoc_map(mn));
+				return Math.max(surplus,1);
+			}
+			return 1;
+			//return 1；
+		};//这是将hex_mn映射到移动力消耗上，暂时是个常数函数
+
 	this.move_range=function(){
 		//这个方法应该给出可行域以及可行域中的所有hex的最短路径。继续用dij算法
+		var that=this;
+		this.short_path={};//映射到当前最优路线的所过节点表
+		this.short_path[[this.m,this.n]]=[[this.m,this.n]];//最优路线是包含初始点的，之后利用时可能需要删除
 		var mp_s=this.mp;
-		var set={};
+		var set={};//映射到当前最优路径的移动力消耗
 		set[[this.m,this.n]]=this.mp;
-		var set_l=[[this.m,this.n]];
+		//var set_l=[[this.m,this.n]];
 		var activate_list=[[this.m,this.n]];
-		var move_cost=function(mn){return 1};//这是将hex_mn映射到移动力消耗上，暂时是个常数函数
-		/*
-		for(var i=0;i<mp_s;i++){
-			var activate_list_b=[];
-			activate_list.forEach(function(act_mn){
-				//var act=hex_d[act_mn[0],act_mn[1]];
-				var act=hex_d[act_mn];
-				act.nei.forEach(function(try_mn){
-					if (set[try_mn]===undefined){
-						set[try_mn]=true;
-						set_l.push(try_mn);
-						activate_list_b.push(try_mn);
-					}
-				})
-			})
-			activate_list=activate_list_b;
-		}
-		*/
+		//var zoc_cost=
 		while (activate_list.length!==0){
 			var activate_list_b=[];
 			activate_list.forEach(function(act_mn){
 				//var act=hex_d[act_mn[0],act_mn[1]];
 				var act=hex_d[act_mn];
 				act.nei.forEach(function(try_mn){
-					var try_s=set[act_mn]-move_cost(try_mn)
-					if (set[try_mn]===undefined && try_s>=0){
+					var try_s=set[act_mn]-that.move_cost(try_mn,set[act_mn]);
+					console.log(try_mn,try_s);
+					if ((set[try_mn]===undefined && try_s>=0)||(set[try_mn]!==undefined && set[try_mn]<try_s)){
 						set[try_mn]=try_s;
-						set_l.push(try_mn);
-						activate_list_b.push(try_mn);
+						var build_path=copy(that.short_path[act_mn]);
+						build_path.push(try_mn);
+						that.short_path[try_mn]=build_path;
+						//set_l.push(try_mn);
+						if (try_s>0){
+							activate_list_b.push(try_mn);
+						}
 					}
 				})
 			})
 			activate_list=activate_list_b;
 		}
-		return set_l;
+		//return set_l;
+		this.surplus_map=map;
+		return set;
+	}
+	this.destroy=function(){
+		this.removed=true;
+		this.el.hide();
+		hex_d[[this.m,this.n]].unit=null;
+		this.m=undefined;
+		this.n=undefined;
+		
 	}
 }
 function Inf(id){
@@ -438,12 +663,20 @@ function Inf(id){
 	line1.appendTo(pad);
 	line2.appendTo(pad);
 	this.els['line']=[line1,line2];
-	
+}
+function Cav(id){
+	Unit.call(this,id);
+	var pad=this.els.pad;
+	var line2=draw_line(0,16,25,0);
+	line2.appendTo(pad);
+	this.els['line']=[line1,line2];
 }
 
 
 var unit_click_box=new Unit_click_box();
 var hex_click_box=new Hex_click_box();
+var phase_box=new Phase_box();
+var toolbox=new Toolbox();
 
 //draw_hex(50,50,'tip');
 //draw_hex(200,200,'lie');
@@ -453,6 +686,8 @@ var unit_l=[];
 var unit_d={};//unit的key是外部的id，该id是标准化文件中应该携带
 var hex_l=[];
 var hex_d={};//hex的key是它的坐标列表（字面量
+var player_l=[];
+var player_d={};
 
 var mat=create_hexs(scenario_dic['size'][0],scenario_dic['size'][1]);
 
@@ -467,6 +702,8 @@ scenario_dic['hex_dic_list'].forEach(function(_hex){
 	hex.VP=_hex.VP;
 	hex.terrain=_hex.terrain;
 	hex.capture=_hex.capture;
+	hex.unit=null;//正在占据此格的单位
+	hex.pass=null;//正在通过的单位
 	
 	hex_l.push(hex);
 	hex_d[[hex.m,hex.n]]=hex;
@@ -500,13 +737,24 @@ scenario_dic['unit_dic_list'].forEach(function(_unit){
 	
 	unit_l.push(unit);
 	unit_d[unit.id]=unit;
+});
+scenario_dic['player_dic_list'].forEach(function(_player){
+	var player=new Player(_player.id);
+	player.name=_player.name;
+	
+	player_l.push(player);
+	player_d[_player['id']]=player;
 })
 
+phase_box.change_phase_to(0,'ready');
+
 var unit=unit_l[0];
+/*
 var range=unit.move_range()
 range.forEach(function(mn){
 	hex_d[mn].highlight();
 })
+*/
 /*
 var mat= create_hexs(6,8);
 for (var i=0;i<6;i++){

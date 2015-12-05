@@ -42,17 +42,30 @@ class Unit(object):
         'pad':self.pad}
         return dic
         
+class Player(object):
+    def __init__(self):
+        self.id=0
+        self.name=''
+    def to_dict(self):
+        dic={'id':self.id,'name':self.name}
+        return dic
+        
 class Scenario(object):
     def __init__(self):
         self.unit_list=[]
         self.hex_list=[]
+        self.player_list=[]
         self.size=(0,0)
     def to_json(self,sort=True):
         if sort:
             self.sort_id()
+        if len(self.player_list)==0:
+            print 'you need put player information,call auto_player() or assign manualy'
         unit_dic_list=[unit.to_dict() for unit in self.unit_list]
         hex_dic_list=[hexij.to_dict() for hexij in self.hex_list]
-        big_dic={'unit_dic_list':unit_dic_list,'hex_dic_list':hex_dic_list,'size':self.size}
+        player_dic_list=[player.to_dict() for player in self.player_list]
+        big_dic={'unit_dic_list':unit_dic_list,'hex_dic_list':hex_dic_list,'size':self.size,
+                 'player_dic_list':player_dic_list}
         return json.dumps(big_dic)
     def to_javascript(self,out_name='output.js',obj_name='scenario_dic'):
         s=self.to_json()
@@ -74,6 +87,12 @@ class Scenario(object):
             unit.id=i
     def add_unit(self,obj):
         self.unit_list.append(obj)
+    def auto_player(self,nameA,nameB):
+        playerA=Player(0)
+        playerB=Player(1)
+        playerA.name=nameA
+        playerB.name=nameB
+        self.player_list=[playerA,playerB]
                 
 class Kingdom(Unit):
     def __init__(self):
@@ -102,6 +121,15 @@ class Empire(Unit):
         self.color['box_back']=(0,0,0)
         self.color['pad_line']=(0,0,0)
         self.color['pad_back']=(255,255,255)
+        
+class Kingdom_p(Player):
+    def __init__(self):
+        self.id=0
+        self.name='Kingdom'
+class Empire_p(Player):
+    def __init__(self):
+        self.id=1
+        self.name='Empire'
 
                 
 size_m=20
@@ -124,6 +152,11 @@ princess.VP=10
 princess.n=1
 princess.label='princess'
 scenario.add_unit(princess)
+
+kingdom_p=Kingdom_p()
+empire_p=Empire_p()
+scenario.player_list=[kingdom_p,empire_p]
+
 
 scenario.size=(size_m,size_n)
 
