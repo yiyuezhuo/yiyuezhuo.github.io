@@ -17,6 +17,38 @@ function any(l){
 function copy(l){
 	return l.slice();
 }
+function equal_struct(l1,l2){
+	if (typeof(l1)!=='object'){
+		return l1===l2;
+	}
+	else{
+		if (l1.length!==l2.length){
+			return false;
+		}
+		for(var i=0;i<l1,length;i++){
+			if (typeof(l1[i])!=='object'){
+				if (l1[i]!==l2[i]){
+					return false;
+				}
+			}
+			else{
+				if(!equal_struct(l1[i],l2[i])){
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+}
+function member(atom,list){
+    for(var i=0;i<list.length;i++){
+		if (equal_struct(atom,list[i])){
+			return true;
+		}
+	}
+    return false;
+}
+
 function int(n){
 	var m=Number(n);
 	if (m%1===0){
@@ -230,29 +262,25 @@ function Unit_click_box(){
 		//console.log('el_id',el.id);
 		var unit=unit_d[el.className];
 		console.log(unit.combat,unit.movement);
-		switch(this.state){
-			case 'start':
-				/*
-				this.choose_unit=unit;
-				this.reset_focus();
-				this.state='choosed';//目前实现的应该是此货处于此状态时点击另一个Hex就移动过去。
-				*/
-				this.try_choose(unit);
-				//console.log('start->choosed');
+		switch(phase_box.state[1]){
+			case 'move':
+				console.log('enter move')
+				switch(this.state){
+					case 'start':
+						this.try_choose(unit);
+						break;
+					case 'choosed':
+						this.try_choose(unit);
+						break;
 				break;
-			case 'choosed':
-				//this.state='start';用点击不可达区域方法跳出选择状态。这里立即切换选择罢了
-				//choose只允许选择当前阶段可控的单位,如果点击是不相匹配的单位，保持之前状态
-				/*
-				this.choose_unit=unit;
-				this.reset_focus();
-				this.state='choosed';
-				*/
-				this.try_choose(unit);
-				//this.choose_unit=undefined;
-				//console.log('choosed->start');
+				}
+			case 'combat':
+				console.log('enter combat');
+				battle_box.join(unit);
 				break;
+			
 		}
+		console.log('click end');
 	}
 	this.reset_focus=function(){
 		var set=this.choose_unit.move_range();
@@ -294,20 +322,96 @@ function Hex_click_box(){
 						console.log('can not do anything');
 						break;
 					case 'choosed':
-						//unit_click_box.choose_unit.move_to(hex.x,hex.y);
 						if (unit_click_box.choose_unit.move_range()[[hex.m,hex.n]]!==undefined){
 							unit_click_box.choose_unit.move_to_path(hex.x,hex.y);
-							//hex_click_box.reset_focus();
 						}
 						else{
 							unit_click_box.state='start';
-							//unit_click_box.choose_unit=undefined;
 							unit_click_box.remove_focus();
 							console.log('Too long to move');
 						}
+						break;
 				}
 				break;
 		}
+	}
+}
+function Battle_box(){
+	//这个对象的背后可能会影响的UI在toolbox里
+	this.atk_unit_list=[];
+	this.def_unit_list=[];
+	var that=this;
+	this.join_able=function(unit){
+		//这个函数按照当前已加入的单位判定视图加入的单位是否是合法的,注意这里没有加入到“哪一边”的自由度
+		//这里的实现是可以一个单位攻击多个单位或多个单位攻击一个单位，但不能多对多。但是至少应从一个守方单位开始
+		//选起
+		var atk_unit_list=this.atk_unit_list;
+		var def_unit_list=this.def_unit_list;
+		if(unit.side===phase_box.state[0]){
+			//选择当前阶段而言的己方单位
+			if (def_unit_list.length===0){
+				return false;
+			}
+			else{
+				if(atk_unit_list.length>=1 && def_unit_list.length>1){
+					return false;
+				}
+				else{
+					var def=def_unit_list[0];
+					var nei=hex_d[[def.m,def.n]].nei;
+					return member([unit.m,unit.n],nei);
+				}
+			}
+		}
+		else{
+			//选择当前阶段而言的敌方单位
+			if (atk_unit_list.length>1){
+				return false;
+			}
+			else if(atk_unit_list.length===0 && def_unit_list.length===0){
+				return true;
+			}
+			else if(atk_unit_list.length===0 && def_unit_list.length>0){
+				return false;
+			}
+			else{
+				var atk=atk_unit_list[0];
+				var nei=hex_d[[def.m,def.n]].nei;
+				return member([unit.m,unit.n],nei);
+			}
+		}
+	}
+	this.join=function(unit){
+		if (this.join_able(unit)){
+			if (unit.side===phase_box.state[0]){
+				this.atk_unit_list.push(unit);
+				toolbox.battle_odds_attack.append($('<p>'+unit.to_tag()+'</p>'));
+				console.log('join atk');
+			}
+			else{
+				this.def_unit_list.push(unit);
+				toolbox.battle_odds_defence.append($('<p>'+unit.to_tag()+'</p>'));
+				console.log('join def');
+			}
+		}
+		else{
+			console.log('join fail');
+		}
+	}
+	this.do_it=function(){
+		//完成结算并重置状态
+		var atk_id_list=that.atk_unit_list.map(function(unit){return unit.id});
+		var def_id_list=that.def_unit_list.map(function(unit){return unit.id});
+		do_battle(atk_id_list,def_id_list);
+		//this.atk_unit_list=[];
+		//this.def_unit_list=[];
+		that.reset();
+	}
+	this.reset=function(){
+		this.atk_unit_list=[];
+		this.def_unit_list=[];
+		toolbox.battle_odds_attack.empty();
+		toolbox.battle_odds_defence.empty();
 	}
 }
 function Phase_box(){
@@ -326,12 +430,14 @@ function Phase_box(){
 			case 'move':
 				//this.state=[this.state[0],'combat'];
 				that.change_phase_to(that.state[0],'combat');
+				toolbox.combat_box.show();
 				break;
 			case 'combat':
 				//this.state=[this.next_player(),'ready'];
 				var next_player=player_d[that.next_player_id()]
 				that.change_phase_to(next_player.id,'ready');
 				next_player.ready();
+				toolbox.combat_box.hide();
 				//ready阶段，在你处理的时候，自动恢复阶段已经结束，这里处理的是其他东西，如资源调配
 				that.turn+=1;
 				break;
@@ -353,12 +459,20 @@ function Phase_box(){
 }
 function Toolbox(){
 	this.el=$('#toolbox');
-	
 	this.el.css({'z-index':20,position:'fixed','background-color': 'rgb(250, 250, 250)'});
 	//this.el.append($('<div>HeHe</div>'));
 	var next_phase_a=$('#next_phase_a');//这个如果性能不过关就动态创建
 	next_phase_a.click(phase_box.next_phase);
 	this.show_widget=$('#turn_state');
+	this.do_it_a=$('#do_it_a');
+	this.reset_a=$('#reset_a');
+	this.combat_box=$('#combat_box');
+	this.battle_odds=$('#battle_odds');
+	this.battle_odds_attack=$('#battle_odds_attack');
+	this.battle_odds_defence=$('#battle_odds_defence');
+	this.do_it_a.click(battle_box.do_it);
+	this.reset_a.click(battle_box.reset);
+	this.combat_box.hide();
 }
 function Player(side_id){
 	//player级的状态管理由这里处理,以及一些诸如选择全体算子的处理方法
@@ -621,7 +735,7 @@ function Unit(id){
 				var act=hex_d[act_mn];
 				act.nei.forEach(function(try_mn){
 					var try_s=set[act_mn]-that.move_cost(try_mn,set[act_mn]);
-					console.log(try_mn,try_s);
+					//console.log(try_mn,try_s);
 					if ((set[try_mn]===undefined && try_s>=0)||(set[try_mn]!==undefined && set[try_mn]<try_s)){
 						set[try_mn]=try_s;
 						var build_path=copy(that.short_path[act_mn]);
@@ -637,7 +751,7 @@ function Unit(id){
 			activate_list=activate_list_b;
 		}
 		//return set_l;
-		this.surplus_map=map;
+		this.surplus_map=set;
 		return set;
 	}
 	this.destroy=function(){
@@ -648,6 +762,11 @@ function Unit(id){
 		this.n=undefined;
 		
 	}
+	this.to_tag=function(){
+		//这个函数会返回一个简介字符串，用于插入到odds里显示
+		return this.label+':'+this.combat;
+	}
+
 }
 function Inf(id){
 	//console.log('Inf',id);
@@ -676,7 +795,10 @@ function Cav(id){
 var unit_click_box=new Unit_click_box();
 var hex_click_box=new Hex_click_box();
 var phase_box=new Phase_box();
+var battle_box=new Battle_box();
+
 var toolbox=new Toolbox();
+
 
 //draw_hex(50,50,'tip');
 //draw_hex(200,200,'lie');
@@ -749,25 +871,3 @@ scenario_dic['player_dic_list'].forEach(function(_player){
 phase_box.change_phase_to(0,'ready');
 
 var unit=unit_l[0];
-/*
-var range=unit.move_range()
-range.forEach(function(mn){
-	hex_d[mn].highlight();
-})
-*/
-/*
-var mat= create_hexs(6,8);
-for (var i=0;i<6;i++){
-	for(var j=0;j<8;j++){
-		mat[i][j].set_color(random_color());
-		//create_bound(mat[i][j].left,mat[i][j].top);
-	}
-}
-//var dic=draw_counter();
-//dic.box.appendTo(map_el);
-
-inf=new Inf(0);
-inf.combat=10;
-inf.movement=5;
-inf.deco();
-*/
