@@ -74,6 +74,7 @@ function do_battle(atk_id_l,def_id_l){
 	var result=result_draw(ats,dts);
 	console.log('A:',ats,'D:',dts,'result',result);
 	result_do_list(result,atk_l,def_l);
+	return result;
 }
 function result_do_list(result,atk_l,def_l){
 	var dts=sum(def_l.map(function(unit){return unit.combat}));
@@ -97,7 +98,7 @@ function result_do_list(result,atk_l,def_l){
 			var exs=0;
 			var ax_l;
 			for(var i=0;i<ex_l.length;i++){
-				exs+=ex_l[i];
+				exs+=ex_l[i].combat;
 				if (exs>dts){
 					break;
 					
@@ -107,4 +108,5 @@ function result_do_list(result,atk_l,def_l){
 			ax_l.forEach(function(unit){eliminate(unit.id)});
 			break;
 	}
+	return result;
 }
