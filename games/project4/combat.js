@@ -1,5 +1,5 @@
 //这个模块实现经典的CRT裁决，并解决UI交互以外的所有战斗相关功能函数。
-
+/*
 var CRT= (function(){
 	var A1='A1';
 	var AR='AR';
@@ -23,6 +23,9 @@ var CRT= (function(){
 	}
 	return table
 })();
+*/
+var CRT=scenario_dic['CRT'];
+
 function result_distribution(atk,def){
 	//接受攻方总点数与守方总点数，映射一个结果表，这里不进行直接抽取。
 	var odds;
@@ -34,10 +37,17 @@ function result_distribution(atk,def){
 		}
 	}
 	return CRT[odds_c];
+	//return CRT()
 }
-function result_draw(atk,def){
-	var d6=int(random.random()*6);
-	return result_distribution(atk,def)[d6];
+function result_draw(atk,def,buff){
+	if (buff===undefined){
+		buff=0;
+	}
+	//var d6=int(random.random()*6);
+	var dn=int(scenario_dic['setting']['DICE']*random.random())+1;
+	//return result_distribution(atk,def)[d6];
+	var point=dn+buff;
+	return result_distribution(atk,def)[point];
 }
 function eliminate(unit_id){
 	var unit=unit_d[unit_id];

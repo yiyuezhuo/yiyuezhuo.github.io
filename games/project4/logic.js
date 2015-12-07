@@ -25,7 +25,7 @@ function equal_struct(l1,l2){
 		if (l1.length!==l2.length){
 			return false;
 		}
-		for(var i=0;i<l1,length;i++){
+		for(var i=0;i<l1.length;i++){
 			if (typeof(l1[i])!=='object'){
 				if (l1[i]!==l2[i]){
 					return false;
@@ -380,6 +380,7 @@ function Battle_box(){
 	this.def_unit_list=[];
 	this.pursuit_hex_list=[];
 	this.pursuit_unit_list=[];
+	this.cache_def_loc=[];
 	var that=this;
 	//this.state='ready';//battle_box有ready阶段，此时点击的意思是使其卷入一场战斗，
 	//另一个pursuit，此时点击表示追击到格子中
@@ -451,6 +452,7 @@ function Battle_box(){
 		//完成结算并重置状态
 		var atk_id_list=that.atk_unit_list.map(function(unit){return unit.id});
 		var def_id_list=that.def_unit_list.map(function(unit){return unit.id});
+		that.cache_def_loc=that.def_unit_list.map(function(unit){return hex_d[[unit.m,unit.n]]});
 		var result=do_battle(atk_id_list,def_id_list);
 		that.result_follow(result);
 		//this.atk_unit_list=[];
@@ -463,16 +465,19 @@ function Battle_box(){
 		this.def_unit_list.forEach(function(unit){unit.fight_number+=1;});
 		switch(result){
 			case 'DR':
-				this.pursuit_hex_list=this.def_unit_list.map(function(unit){return hex_d[[unit.m,unit.n]]});
+				//this.pursuit_hex_list=this.def_unit_list.map(function(unit){return hex_d[[unit.m,unit.n]]});
+				this.pursuit_hex_list=this.cache_def_loc;
 				this.pursuit_unit_list=this.atk_unit_list;
 				break;
 			case 'DE':
-				this.pursuit_hex_list=this.def_unit_list.map(function(unit){return hex_d[[unit.m,unit.n]]});
+				//this.pursuit_hex_list=this.def_unit_list.map(function(unit){return hex_d[[unit.m,unit.n]]});
 				//这里有个麻烦是副作用本来是设了这些单位mn为undefined的，现在只好不这样办了
+				this.pursuit_hex_list=this.cache_def_loc;
 				this.pursuit_unit_list=this.atk_unit_list;
 				break;
 			case 'EX':
-				this.pursuit_hex_list=this.def_unit_list.map(function(unit){return hex_d[[unit.m,unit.n]]});
+				//this.pursuit_hex_list=this.def_unit_list.map(function(unit){return hex_d[[unit.m,unit.n]]});
+				this.pursuit_hex_list=this.cache_def_loc;
 				this.pursuit_unit_list=this.atk_unit_list.filter(function(unit){return !unit.removed});
 				break;
 		}
@@ -486,10 +491,11 @@ function Battle_box(){
 		}
 	}
 	this.reset=function(){
-		this.atk_unit_list=[];
-		this.def_unit_list=[];
+		that.atk_unit_list=[];
+		that.def_unit_list=[];
 		toolbox.battle_odds_attack.empty();
 		toolbox.battle_odds_defence.empty();
+		that.cache_def_loc=[];
 		unit_click_box.state='join';
 	}
 	this.pursuit_reset=function(){
@@ -532,13 +538,17 @@ function Phase_box(){
 				break;
 			case 'move':
 				//this.state=[this.state[0],'combat'];
+
 				unit_click_box.state='join';
 				that.change_phase_to(that.state[0],'combat');
 				toolbox.combat_box.show();
 				break;
 			case 'combat':
 				//this.state=[this.next_player(),'ready'];
+
+				var ending_player=player_d[that.state[0]];
 				var next_player=player_d[that.next_player_id()]
+				ending_player.end();
 				that.change_phase_to(next_player.id,'ready');
 				next_player.ready();
 				toolbox.combat_box.hide();
@@ -552,7 +562,18 @@ function Phase_box(){
 		console.log(player_d[side].name+' '+state+' phase');
 		toolbox.show_widget.html(player_d[side].name+' '+state+' phase');
 		this.state=[side,state];
-		return 
+		switch(state){
+			case 'ready':
+				event_box.fire('ready');
+				break;
+			case 'move':
+				event_box.fire('move');
+				break;
+			case 'combat':
+				event_box.fire('combat');
+				break;
+		}
+		return ;
 	}
 	this.next_player_id=function(){
 		return other([0,1],this.state[0]);
@@ -584,6 +605,32 @@ function Toolbox(){
 	this.AI_run_a.click(AI_run);
 	//this.AI_run_a.hide();
 }
+function News_box(){
+	this.el=$('#news_box');
+	this.news_text=$('#news_text');
+	this.news_exit_a=$('#news_exit_a');
+	this.el.css({'position':'fixed','z-index':15,'background-color':'rgb(0, 0, 50)',left:'200px',color:'rgb(255,255,255)'});
+	var that=this;
+	this.write=function(text){
+		this.news_text.html(this.news_text.html()+text);
+	}
+	this.reset=function(){
+		this.news_text.empty();
+	}
+	this.show=function(text){
+		if(text===undefined){
+			text='';
+		}
+		this.reset();
+		this.write(text);
+		this.el.show();
+	}
+	this.hide=function(){
+		that.el.hide();
+	}
+	this.news_exit_a.click(this.hide);
+	this.el.hide();
+}
 function Player(side_id){
 	//player级的状态管理由这里处理,以及一些诸如选择全体算子的处理方法
 	this.side=side_id;
@@ -601,6 +648,11 @@ function Player(side_id){
 	this.ready=function(){
 		this.all_unit().forEach(function(unit){
 			unit.ready();
+		})
+	}
+	this.end=function(){
+		this.all_unit().forEach(function(unit){
+			unit.end();
 		})
 	}
 	
@@ -690,6 +742,10 @@ function Unit(id){
 		this.mp=this.movement;
 		this.fight_number=0;
 	}
+	this.end=function(){
+		this.mp=this.movement;
+		this.fight_number=0;
+	}
 	this.set_hex=function(m,n){
 		this.hex_move(this.m,this.n,m,n);
 		//hex_d[[this.m,this.n]].unit=null;
@@ -752,12 +808,13 @@ function Unit(id){
 		})
 	}
 	this.hex_move=function(m1,n1,m2,n2){
+		//console.log(m1,n1,m2,n2);
 		hex_d[[m1,n1]].unit=null;
 		hex_d[[m2,n2]].unit=this;
 	}
 	this.hex_pass=function(m1,n1,m2,n2){
 		hex_d[[m1,n1]].pass=null;
-		hex_d[[m2,n2]]=pass.this;
+		hex_d[[m2,n2]].pass=this;
 	}
 	this.move_to_path=function(target_m,target_n){
 		var ing_m=this.m;
@@ -796,15 +853,24 @@ function Unit(id){
 	}
 	this.move_cost=function(mn,surplus){
 			var hex=hex_d[mn];
+			var base_cost;
+			switch(hex.terrain){
+				case 'open':
+					base_cost=1;
+					break;
+				case 'hill':
+					base_cost=3;
+					break;
+			}
 			//console.log(this.zoc_map(mn));
 			if (hex.unit!==null && hex.unit.side!==this.side){
 				return Math.max(surplus+1,1);//从而trick的禁止移动
 			}
 			if (this.zoc_map(mn)[this.side]){//这里有个布尔代数trick重构时注意
 				//console.log('zoc_map',this.zoc_map(mn));
-				return Math.max(surplus,1);
+				return Math.max(surplus,base_cost);
 			}
-			return 1;
+			return base_cost;
 			//return 1；
 		};//这是将hex_mn映射到移动力消耗上，暂时是个常数函数
 
@@ -885,6 +951,17 @@ function Cav(id){
 	var pad=this.els.pad;
 	var line2=draw_line(0,16,25,0);
 	line2.appendTo(pad);
+	this.els['line']=[line2];
+}
+function HQ(id){
+	Unit.call(this,id);
+	var pad=this.els.pad;
+	var line1=draw_line(0,0,13,0);
+	var line2=draw_line(13,8,25,8);
+	line1.css({'height':10});
+	line2.css({'height':10});
+	line1.appendTo(pad);
+	line2.appendTo(pad);
 	this.els['line']=[line1,line2];
 }
 
@@ -894,7 +971,12 @@ var hex_click_box=new Hex_click_box();
 var phase_box=new Phase_box();
 var battle_box=new Battle_box();
 
+var news_box=new News_box();
 var toolbox=new Toolbox();
+
+var event_box=new Event_box();
+var AI_box= new AI_box_class()
+AI_box.setup(scenario_dic.AI_list);
 
 
 //draw_hex(50,50,'tip');
@@ -913,6 +995,7 @@ var mat=create_hexs(scenario_dic['size'][0],scenario_dic['size'][1]);
 scenario_dic['hex_dic_list'].forEach(function(_hex){
 	//var hex=new Hex();
 	var hex=mat[_hex.m][_hex.n];
+	//console.log('hex',hex,'_hex',_hex)
 	hex.m=_hex.m;
 	hex.x=_hex.m;
 	hex.n=_hex.n;
@@ -923,6 +1006,13 @@ scenario_dic['hex_dic_list'].forEach(function(_hex){
 	hex.capture=_hex.capture;
 	hex.unit=null;//正在占据此格的单位
 	hex.pass=null;//正在通过的单位
+	switch (hex.terrain){
+		case 'open':
+			hex.set_color([100,200,100]);
+			break;
+		case 'hill':
+			hex.set_color([200,200,100]);
+	}
 	
 	hex_l.push(hex);
 	hex_d[[hex.m,hex.n]]=hex;
@@ -935,6 +1025,12 @@ scenario_dic['unit_dic_list'].forEach(function(_unit){
 		case 'infantry'://剧本文件里pad指定兵牌类型，这类型怎么画由这里决定
 			unit=new Inf(_unit.id);
 			break;
+		case 'cavalry':
+			unit=new Cav(_unit.id);
+			break;
+		case 'HQ':
+			unit=new HQ(_unit.id);
+			break;
 	}
 	unit.id=_unit.id;
 	unit.side=_unit.side;
@@ -945,6 +1041,7 @@ scenario_dic['unit_dic_list'].forEach(function(_unit){
 	unit.VP=_unit.VP;
 	unit.label=_unit.label;
 	unit.img=_unit.img;
+	unit.group=_unit.group;
 	unit.set_box_border_color(_unit.color.box_border);
 	unit.set_box_color(_unit.color.box_back);
 	unit.set_font_color(_unit.color.font);
@@ -966,5 +1063,6 @@ scenario_dic['player_dic_list'].forEach(function(_player){
 })
 
 phase_box.change_phase_to(0,'ready');
+event_box.fire('ready');
 
 var unit=unit_l[0];

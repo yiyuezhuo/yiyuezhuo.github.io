@@ -1,11 +1,29 @@
+function AI_box_class(){
+	//该对象应该根据AI命令提供AI_goal所需的数据
+	this.group_map={};
+	var that=this;
+	this.setup=function(command_list){
+		command_list.forEach(function(command){
+			switch(command[0]){
+				case 'init':
+					that.group_map[command[1]]=[command[2],command[3]];
+					break;
+			}
+		})
+	}
+}
+
 function AI_goal(unit){
 	//这个函数映射单位（如果它寻求AI的帮助的话）到它的目标上，为了测试这里直接隔断。
+	/*
 	if (unit.side===1){
 		return [0,0];
 	}
 	else{
 		return [5,5];
 	}
+	*/
+	return AI_box.group_map[unit.group];
 }
 
 function AI_unit_move(unit){
@@ -76,6 +94,7 @@ function AI_unit_combat(unit){
 			var target_unit=random.choice(battle_box.pursuit_unit_list);
 			unit_click_box.state='wait_hex';
 			var target_hex=random.choice(battle_box.pursuit_hex_list);
+			console.log('target_unit:',target_unit,'target_hex',target_hex)
 			battle_box.do_pursuit(target_unit,target_hex);
 		}
 	}
