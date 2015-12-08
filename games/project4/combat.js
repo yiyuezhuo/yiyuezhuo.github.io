@@ -73,16 +73,24 @@ function routed(unit_id){
 		unit.move_to(target[0],target[1],100, "linear",'no_focus');
 	}
 }
-function do_battle(atk_id_l,def_id_l){
+function do_battle(atk_id_l,def_id_l,buff){
+	if (buff===undefined){
+		buff=0;
+	}
 	//atk_l是参与进攻的单位id列表，def_l类似，虽然一般应该只有一个单位
 	var atk_l=atk_id_l.map(function(unit_id){return unit_d[unit_id];});
 	var def_l=def_id_l.map(function(unit_id){return unit_d[unit_id];});
 	//var ats=atk_l.reduce(function(u1,u2){return u1.combat+u2.combat;});
-	var ats=sum(atk_l.map(function(unit){return unit.combat}));
+	if (atk_id_l.length!==0){
+		var ats=sum(atk_l.map(function(unit){return unit.combat}))+buff;
+	}
+	else{
+		var ats=buff;//纯远程攻击
+	}
 	var dts=sum(def_l.map(function(unit){return unit.combat}));
 	//var dts=def_l.reduce(function(u1,u2){return u1.combat+u2.combat;});
 	var result=result_draw(ats,dts);
-	console.log('A:',ats,'D:',dts,'result',result);
+	console.log('A:',ats,'buff',buff,'D:',dts,'result',result);
 	result_do_list(result,atk_l,def_l);
 	return result;
 }

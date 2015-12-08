@@ -6,6 +6,7 @@ Created on Fri Dec 04 15:58:53 2015
 """
 import json
 import csv
+import sys
 
 #实体们应该用类实现，然后各对象1输出字典格式，最后统一转成json由javascript读取
 
@@ -41,7 +42,7 @@ class Unit(object):
     def to_dict(self):
         dic={'id':self.id,'side':self.side,'m':self.m,'n':self.n,'combat':self.combat,
         'movement':self.movement,'VP':self.VP,'label':self.label,'img':self.img,'color':self.color,
-        'pad':self.pad,'group':self.group}
+        'pad':self.pad,'group':self.group,'range':self.range}
         return dic
         
 class Player(object):
@@ -146,11 +147,13 @@ class CSV_model(object):
         self.path=None
         self.register=['AI.csv','block.csv','capture.csv','color.csv',
                        'label.csv','player.csv','terrain.csv','unit.csv',
-                       'VP.csv','CRT.csv','setting.csv']
+                       'VP.csv','CRT.csv','setting.csv','place.csv']
         self.raw_register=['script.js']#raw里的文件不使用csv模块进行装载
         self.csv={}
         self.raw={}
         self.root=''
+        self.mark={}#place的结果
+        self.id_unit_dic={}
         if scenario!=None:
             self.scenario=scenario
         else:
@@ -189,6 +192,7 @@ class CSV_model(object):
         label=self.csv['label.csv']
         terrain=self.csv['terrain.csv']
         VP=self.csv['VP.csv']
+        place=self.csv['place.csv']#该文件应该由terrain.csv复制生成，可以保留原来的地形名称，只要id是数字就行
         #暂时削弱block的能力，使其只能屏蔽左上角以外的东西，因为不好实现
         for i in range(len(block)):
             for j in range(len(block[0])):
@@ -202,9 +206,17 @@ class CSV_model(object):
                     hex_ij.VP=VP[i][j]
                     hex_ij.capture=capture[i][j]
                     self.scenario.hex_list.append(hex_ij)
+                    #if place[i][j].isdigit():已经clean过了如果真是数字
+                    if type(place[i][j])==int:
+                        self.mark[place[i][j]]=[i,j]
         ml,nl=zip(*[[hex_.m,hex_.n] for hex_ in self.scenario.hex_list])
         ms,ns=set(ml),set(nl)
         self.scenario.size=(max(ms)+1,max(ns)+1)
+    def place_rewrite(self):
+        #利用place.csv信息或者self.mark信息重写mn，若不调用这个方法就不会发生
+        for unit_id in self.mark.keys():
+            unit=self.id_unit_dic[unit_id]
+            unit.m,unit.n=self.mark[unit_id]
     def pick_from_head(self,csv_list):
         #这个应该解析一个CSV表成一个字典，当第一行是标记行时
         head=csv_list[0]
@@ -235,7 +247,9 @@ class CSV_model(object):
             unit.img=unit_i['img']
             unit.color=color[unit_i['color']]
             unit.group=unit_i['group']
+            unit.range=unit_i['range']
             self.scenario.unit_list.append(unit)
+            self.id_unit_dic[unit.id]=unit
     def parse_player(self):
         player_l=self.pick_from_head(self.csv['player.csv'])
         for player_i in player_l:
@@ -266,7 +280,7 @@ class CSV_model(object):
     def parse_script(self):
         #script并不进行进一步处理，直接传给前端eval，当然如此性能就坑了
         self.scenario.script=self.raw['script.js']
-    def parse(self):
+    def parse(self,place=False):
         self.parse_AI()
         self.parse_CRT()
         self.parse_map()
@@ -274,21 +288,29 @@ class CSV_model(object):
         self.parse_player()
         self.parse_setting()
         self.parse_script()
+        if place:
+            self.place_rewrite()
     def to_javascript(self,out_name='output.js',obj_name='scenario_dic'):
         self.scenario.to_javascript(out_name,obj_name)
         
-def trans(path,out_name):
+def trans(path,out_name='output.js',place=False):
     model=CSV_model()
     model.load(path)
-    model.parse()
+    model.parse(place=place)
     model.to_javascript(out_name=out_name)
     print 'fin'
-    
-model=CSV_model()
-model.load('scenario\\p_1_shock')
-model.parse()
-model.to_javascript()
-print 'fin'
 
+if __name__ == '__main__':
+    if len(sys.argv)==1:#从spyder启动
+        model=CSV_model()
+        model.load('scenario\\p_3_inner')
+        model.parse(place=True)
+        model.to_javascript()
+        print 'fin'
+    else:
+        path=sys.argv[1]
+        place='place' in sys.argv
+        print 'place',place
+        trans(path,place=place)
     
         

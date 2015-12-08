@@ -64,10 +64,14 @@ function AI_unit_combat(unit){
 	//这个实现为对每个敌人单位搜索，看看能不能，是否值得发起攻击。在这最简单的情况中，要么全体进攻要么不进攻。
 	battle_box.reset();
 	var hex=hex_d[[unit.m,unit.n]];
+	/*
 	if (!(unit.zoc_map([unit.m,unit.n])[unit.side])){
 		return;//如果甚至不在我方ZOC里，不予考虑
-	}
-	var ul=hex.nei.map(function(nei_mn){return hex_d[nei_mn].unit}).filter(function(unit){return unit!==null;});
+	}*/ 
+	//远程化消除此策略，是否允许纯远程攻击？
+	//var ul=hex.nei.map(function(nei_mn){return hex_d[nei_mn].unit}).filter(function(unit){return unit!==null;});
+	//远程化推翻ul从nei计算的方式，转而遍历所有可用单位，这当然会削弱这种弱智AI性能并造成性能损失，然并卵
+	var ul=unit_l;
 	//console.log('nei:',hex.nei,'map:',hex.nei.map(function(nei_mn){return hex_d[nei_mn].unit}),'filter:',ul);
 	if (ul.length===0){
 		return;

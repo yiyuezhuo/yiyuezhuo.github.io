@@ -118,6 +118,21 @@ function sum(l){
 function distance(x1,y1,x2,y2){
 	return Math.sqrt(Math.pow(x1-x2,2)+Math.pow(y1-y2,2));
 }
+function hex_distance(n1,m1,n2,m2){
+	//这个专门算在当前尖顶六角格系统下的距离
+	var n=n2-n1;
+	var m=m2-m1;
+	var y=-n;
+	//var x=m-n//2
+	var x=m-int(n/2)
+	//console.log(m,n,x,y);
+	if (x*y<=0){
+		return Math.abs(x)+Math.abs(y);
+	}
+	else{
+		return Math.abs(x)+Math.abs(y)-Math.min(Math.abs(x),Math.abs(y));
+	}
+}
 
 function draw_hex(left,top,type){
 	//这玩意几年前就写过了，现在居然又要写，实在伤不起。
@@ -409,7 +424,8 @@ function Battle_box(){
 				else{
 					var def=def_unit_list[0];
 					var nei=hex_d[[def.m,def.n]].nei;
-					return member([unit.m,unit.n],nei);
+					//return member([unit.m,unit.n],nei);
+					return unit.in_range([def.m,def.n]);//远程化
 				}
 			}
 		}
@@ -427,7 +443,8 @@ function Battle_box(){
 			else{
 				var atk=atk_unit_list[0];
 				var nei=hex_d[[atk.m,atk.n]].nei;
-				return member([unit.m,unit.n],nei);
+				//return member([unit.m,unit.n],nei);
+				return unit.in_range([atk.m,atk.n]);//远程化
 			}
 		}
 	}
@@ -450,35 +467,63 @@ function Battle_box(){
 	}
 	this.do_it=function(){
 		//完成结算并重置状态
-		var atk_id_list=that.atk_unit_list.map(function(unit){return unit.id});
+		var atk_id_list_t=that.atk_unit_list.map(function(unit){return unit.id});
 		var def_id_list=that.def_unit_list.map(function(unit){return unit.id});
 		that.cache_def_loc=that.def_unit_list.map(function(unit){return hex_d[[unit.m,unit.n]]});
-		var result=do_battle(atk_id_list,def_id_list);
+		var atk_id_list_r=[];//参与结算的id list
+		var atk_id_list_s=[];//化为战斗力但不参与结算的id list
+		atk_id_list_t.forEach(function(unit_id){
+			var unit=unit_d[unit_id];
+			if (that.is_range_attack(unit)){
+				atk_id_list_s.push(unit.id);
+			}
+			else{
+				atk_id_list_r.push(unit.id);
+			}
+		});
+		var buff;
+		if (atk_id_list_s.length!==0){
+			buff=sum(atk_id_list_s.map(function(unit_id){return unit_d[unit_id].combat}));
+		}
+		else{
+			buff=0;
+		}
+		var result=do_battle(atk_id_list_r,def_id_list,buff);
 		that.result_follow(result);
 		//this.atk_unit_list=[];
 		//this.def_unit_list=[];
 		//that.reset();
 	}
+	this.is_range_attack=function(unit){
+		//这个判定一场战斗中一般是攻方的一个单位是否参与的是远程攻击，虽然可能之前标注更好，但那样不好维护
+		var mn=[unit.m,unit.n];
+		var def_loc= this.def_unit_list.map(function(unit){return hex_d[[unit.m,unit.n]]});
+		return !any(def_loc.map(function(hex){return member(mn,hex.nei)}));
+	}
 	this.result_follow=function(result){
 		//result就是'EX'那些字符串之类的，此函数处理它们的后续，如为了协调追击做的状态改变等。
 		this.atk_unit_list.forEach(function(unit){unit.fight_number+=1;});
 		this.def_unit_list.forEach(function(unit){unit.fight_number+=1;});
+		//远程化以后应当移除不是相邻单位的追击能力
 		switch(result){
 			case 'DR':
 				//this.pursuit_hex_list=this.def_unit_list.map(function(unit){return hex_d[[unit.m,unit.n]]});
 				this.pursuit_hex_list=this.cache_def_loc;
-				this.pursuit_unit_list=this.atk_unit_list;
+				//this.pursuit_unit_list=this.atk_unit_list;
+				this.pursuit_unit_list=this.atk_unit_list.filter(function(unit){return !that.is_range_attack(unit)});
 				break;
 			case 'DE':
 				//this.pursuit_hex_list=this.def_unit_list.map(function(unit){return hex_d[[unit.m,unit.n]]});
 				//这里有个麻烦是副作用本来是设了这些单位mn为undefined的，现在只好不这样办了
 				this.pursuit_hex_list=this.cache_def_loc;
-				this.pursuit_unit_list=this.atk_unit_list;
+				//this.pursuit_unit_list=this.atk_unit_list;
+				this.pursuit_unit_list=this.atk_unit_list.filter(function(unit){return !that.is_range_attack(unit)});
 				break;
 			case 'EX':
 				//this.pursuit_hex_list=this.def_unit_list.map(function(unit){return hex_d[[unit.m,unit.n]]});
 				this.pursuit_hex_list=this.cache_def_loc;
 				this.pursuit_unit_list=this.atk_unit_list.filter(function(unit){return !unit.removed});
+				this.pursuit_unit_list=this.atk_unit_list.filter(function(unit){return !that.is_range_attack(unit)});
 				break;
 		}
 		if (this.pursuit_hex_list.length>0 && this.pursuit_unit_list.length>0){
@@ -603,6 +648,7 @@ function Toolbox(){
 	this.combat_box.hide();
 	this.chase_a.hide();
 	this.AI_run_a.click(AI_run);
+	this.el.css({width:'100px'});
 	//this.AI_run_a.hide();
 }
 function News_box(){
@@ -734,6 +780,7 @@ function Unit(id){
 	this.surplus_map={};
 	this.removed=false;
 	this.fight_number=0;//本回合中已经战斗次数，也许会有多次战斗允许的需要
+	this.combat_range=1;
 	this.deco=function(){
 		this.els.l0.html(this.combat);
 		this.els.l2.html(this.movement);
@@ -756,9 +803,11 @@ function Unit(id){
 		this.n=n;
 		//hex_d[[m,n]].unit=this;
 	}
-	this.move_to=function(m,n,duration,pattern,mode){
+	this.move_to=function(m,n,duration,pattern,mode,pass){
 		//hex_d[[this.m,this.n]].unit=null;
-		this.hex_move(this.m,this.n,m,n);
+		if (pass===undefined){
+			this.hex_move(this.m,this.n,m,n);
+		}
 		var left=mat[m][n].left+short_edge_length*Math.cos(Math.PI/6)-counter_x/2;
 		var top=mat[m][n].top+short_edge_length/2-counter_y/2;
 		if (mode==='no_focus'){
@@ -808,7 +857,7 @@ function Unit(id){
 		})
 	}
 	this.hex_move=function(m1,n1,m2,n2){
-		//console.log(m1,n1,m2,n2);
+		//console.log('hex_move:',m1,n1,m2,n2);
 		hex_d[[m1,n1]].unit=null;
 		hex_d[[m2,n2]].unit=this;
 	}
@@ -817,6 +866,7 @@ function Unit(id){
 		hex_d[[m2,n2]].pass=this;
 	}
 	this.move_to_path=function(target_m,target_n){
+		//console.log('move_to_path:',this,target_m,target_n);
 		var ing_m=this.m;
 		var ing_n=this.n;
 		var path=[];
@@ -824,12 +874,15 @@ function Unit(id){
 			path=this.short_path[[target_m,target_n]].slice(1);
 		else{
 			console.log('No path cal to that');
+			return;
 		}
 		
 		//console.log('path:',path);
 		path.forEach(function(node){
-			that.move_to(node[0],node[1],100, "linear");
+			that.move_to(node[0],node[1],100, "linear",'focus','pass');//这种运动应当持有特殊参数来使得
+			//hex_mode行为发生变化，不是正常的进入取出，否则无法解决经过友方单位时将该格置null的bug
 		})
+		this.hex_move(ing_m,ing_n,target_m,target_n);
 		this.mp=this.surplus_map[[target_m,target_n]];
 		//console.log(path);
 	}
@@ -872,7 +925,7 @@ function Unit(id){
 			}
 			return base_cost;
 			//return 1；
-		};//这是将hex_mn映射到移动力消耗上，暂时是个常数函数
+	};//这是将hex_mn映射到移动力消耗上，暂时是个常数函数
 
 	this.move_range=function(){
 		//这个方法应该给出可行域以及可行域中的所有hex的最短路径。继续用dij算法
@@ -928,6 +981,9 @@ function Unit(id){
 	this.to_tag=function(){
 		//这个函数会返回一个简介字符串，用于插入到odds里显示
 		return this.label+':'+this.combat;
+	};
+	this.in_range=function(mn){//判定mn这个格子是否在自己的“射程内”，这个射程暂时是unit.csv描述的，一般是1，即没有远程能力
+		return hex_distance(this.m,this.n,mn[0],mn[1])<=this.combat_range;
 	}
 
 }
@@ -964,7 +1020,48 @@ function HQ(id){
 	line2.appendTo(pad);
 	this.els['line']=[line1,line2];
 }
-
+function Art(id){
+	Unit.call(this,id);
+	var pad=this.els.pad;
+	//var line1=draw_line(0,0,13,0);
+	//var line2=draw_line(13,8,25,8);
+	var hole=$('<div></div>');
+	hole.css({width:7,height:7,'border-radius': '7px',left:'9px',top:'5px',position:'absolute'});
+	hole.appendTo(pad);
+	this.els['line']=[hole];
+}
+function Panzer(id){
+	Unit.call(this,id);
+	var pad=this.els.pad;
+	//var line1=draw_line(0,0,13,0);
+	//var line2=draw_line(13,8,25,8);
+	var hole=$('<div></div>');
+	hole.css({width:14,height:8,'border-radius': '5px/5px',left:'4px',top:'3px',position:'absolute'});
+	hole.appendTo(pad);
+	this.els['line']=[hole];
+	//重写set_pad_line_color方法，因为它不能遵循普通的绘图模型
+	this.set_pad_line_color=function(rgb){
+		var r=rgb[0];var g=rgb[1];var b=rgb[2];
+		var rgbs='rgb('+r+','+g+','+b+')';
+		this.els.pad.css({border:'2px solid'+' rgb('+r+','+g+','+b+')'});
+		this.els.line.forEach(function(line){
+			//set_color(line,rgb,'background-color');
+			line.css({'background-color':'transparent',border:'2px '+rgbs+' solid'});
+		})
+	}
+}
+function Horse_Artillery(id){
+	Unit.call(this,id);
+	var pad=this.els.pad;
+	//var line1=draw_line(0,0,13,0);
+	//var line2=draw_line(13,8,25,8);
+	var hole=$('<div></div>');
+	hole.css({width:7,height:7,'border-radius': '7px',left:'9px',top:'5px',position:'absolute'});
+	hole.appendTo(pad);
+	var line2=draw_line(0,16,25,0);
+	line2.appendTo(pad);
+	this.els['line']=[hole,line2];
+}
 
 var unit_click_box=new Unit_click_box();
 var hex_click_box=new Hex_click_box();
@@ -1031,6 +1128,15 @@ scenario_dic['unit_dic_list'].forEach(function(_unit){
 		case 'HQ':
 			unit=new HQ(_unit.id);
 			break;
+		case 'Artillery':
+			unit=new Art(_unit.id);
+			break;
+		case 'Panzer':
+			unit=new Panzer(_unit.id);
+			break;
+		case 'Horse Artillery':
+			unit=new Horse_Artillery(_unit.id);
+			break;
 	}
 	unit.id=_unit.id;
 	unit.side=_unit.side;
@@ -1042,6 +1148,7 @@ scenario_dic['unit_dic_list'].forEach(function(_unit){
 	unit.label=_unit.label;
 	unit.img=_unit.img;
 	unit.group=_unit.group;
+	unit.combat_range=_unit.range;
 	unit.set_box_border_color(_unit.color.box_border);
 	unit.set_box_color(_unit.color.box_back);
 	unit.set_font_color(_unit.color.font);
