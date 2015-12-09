@@ -411,6 +411,7 @@ function Battle_box(){
 	this.pursuit_hex_list=[];
 	this.pursuit_unit_list=[];
 	this.cache_def_loc=[];
+	this.attack_type_map={}//从unit.id映射到其攻击方式，有两种melee与range，除了距离1攻击外全部置range，该值应在do_it阶段计算
 	var that=this;
 	//this.state='ready';//battle_box有ready阶段，此时点击的意思是使其卷入一场战斗，
 	//另一个pursuit，此时点击表示追击到格子中
@@ -468,6 +469,7 @@ function Battle_box(){
 			if (unit.side===phase_box.state[0]){
 				this.atk_unit_list.push(unit);
 				toolbox.battle_odds_attack.append($('<p>'+unit.to_tag()+'</p>'));
+				//if (hex_distance())
 				console.log('join atk');
 			}
 			else{
@@ -485,6 +487,18 @@ function Battle_box(){
 		var atk_id_list_t=that.atk_unit_list.map(function(unit){return unit.id});
 		var def_id_list=that.def_unit_list.map(function(unit){return unit.id});
 		that.cache_def_loc=that.def_unit_list.map(function(unit){return hex_d[[unit.m,unit.n]]});
+		that.atk_unit_list.forEach(function(unit){//这段逻辑更新attack_type_map为之后分类处理战果与追击做准备
+			var mn=[unit.m,unit.n];
+			//var def_loc= this.def_unit_list.map(function(unit){return hex_d[[unit.m,unit.n]]});
+			var def_loc=that.cache_def_loc;
+			//return !any(def_loc.map(function(hex){return member(mn,hex.nei)}));
+			if (any(def_loc.map(function(hex){return member(mn,hex.nei)}))){
+				that.attack_type_map[unit.id]='melee';
+			}
+			else{
+				that.attack_type_map[unit.id]='range';
+			}
+		})
 		var atk_id_list_r=[];//参与结算的id list
 		var atk_id_list_s=[];//化为战斗力但不参与结算的id list
 		atk_id_list_t.forEach(function(unit_id){
@@ -511,9 +525,17 @@ function Battle_box(){
 	}
 	this.is_range_attack=function(unit){
 		//这个判定一场战斗中一般是攻方的一个单位是否参与的是远程攻击，虽然可能之前标注更好，但那样不好维护
+		/*
 		var mn=[unit.m,unit.n];
 		var def_loc= this.def_unit_list.map(function(unit){return hex_d[[unit.m,unit.n]]});
 		return !any(def_loc.map(function(hex){return member(mn,hex.nei)}));
+		*/
+		if (this.attack_type_map[unit.id]==='melee'){
+			return false;
+		}
+		else{
+			return true;
+		}
 	}
 	this.result_follow=function(result){
 		//result就是'EX'那些字符串之类的，此函数处理它们的后续，如为了协调追击做的状态改变等。
