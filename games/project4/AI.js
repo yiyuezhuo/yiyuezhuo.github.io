@@ -71,7 +71,7 @@ function AI_unit_combat(unit){
 	//远程化消除此策略，是否允许纯远程攻击？
 	//var ul=hex.nei.map(function(nei_mn){return hex_d[nei_mn].unit}).filter(function(unit){return unit!==null;});
 	//远程化推翻ul从nei计算的方式，转而遍历所有可用单位，这当然会削弱这种弱智AI性能并造成性能损失，然并卵
-	var ul=unit_l;
+	var ul=unit_l.filter(function(unit){return !unit.removed});
 	//console.log('nei:',hex.nei,'map:',hex.nei.map(function(nei_mn){return hex_d[nei_mn].unit}),'filter:',ul);
 	if (ul.length===0){
 		return;

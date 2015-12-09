@@ -120,12 +120,27 @@ function distance(x1,y1,x2,y2){
 }
 function hex_distance(n1,m1,n2,m2){
 	//这个专门算在当前尖顶六角格系统下的距离
+	/*
 	var n=n2-n1;
 	var m=m2-m1;
 	var y=-n;
 	//var x=m-n//2
 	var x=m-int(n/2)
 	//console.log(m,n,x,y);
+	if (x*y<=0){
+		return Math.abs(x)+Math.abs(y);
+	}
+	else{
+		return Math.abs(x)+Math.abs(y)-Math.min(Math.abs(x),Math.abs(y));
+	}
+	*/
+	
+	var y1=-n1;
+	var x1=m1-int(n1/2);
+	var y2=-n2;
+	var x2=m2-int(n2/2);
+	var y=y2-y1;
+	var x=x2-x1;
 	if (x*y<=0){
 		return Math.abs(x)+Math.abs(y);
 	}
