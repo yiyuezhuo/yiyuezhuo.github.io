@@ -120,20 +120,6 @@ function distance(x1,y1,x2,y2){
 }
 function hex_distance(n1,m1,n2,m2){
 	//这个专门算在当前尖顶六角格系统下的距离
-	/*
-	var n=n2-n1;
-	var m=m2-m1;
-	var y=-n;
-	//var x=m-n//2
-	var x=m-int(n/2)
-	//console.log(m,n,x,y);
-	if (x*y<=0){
-		return Math.abs(x)+Math.abs(y);
-	}
-	else{
-		return Math.abs(x)+Math.abs(y)-Math.min(Math.abs(x),Math.abs(y));
-	}
-	*/
 	
 	var y1=-n1;
 	var x1=m1-int(n1/2);
@@ -150,7 +136,6 @@ function hex_distance(n1,m1,n2,m2){
 }
 
 function draw_hex(left,top,type){
-	//这玩意几年前就写过了，现在居然又要写，实在伤不起。
 	//因为用SVG太蛋疼，使用双层div，一层div专用CSS渲染六角格形状。不接收事件
 	//另一层div接受click事件并且对坐标系进行映射。抽象el元素应当同时管理这两个部分。
 	var three;
@@ -240,7 +225,7 @@ function draw_counter(){
 	var box=$('<div></div>');
 	box.css({width:counter_x,height:counter_y,position:"absolute","background-color":"rgb(150,150,150)",'z-index':1,'user-select':'none',border:'2px solid #000'});
 	var size=$('<div></div>');
-	size.css({left:17,top:0,position:"absolute",'font-size':'10%','color':"rgb(255,255,255)"});
+	size.css({left:0,top:0,width:counter_x,position:"absolute",'font-size':'10%','color':"rgb(255,255,255)",'text-align':'center'});
 	size.html('XX');
 	size.appendTo(box);
 	var pad=$('<div></div>');
@@ -687,6 +672,10 @@ function Toolbox(){
 	this.AI_run_a.click(AI_run);
 	this.el.css({width:'100px'});
 	//this.AI_run_a.hide();
+	this.description_name=$('#description_name');
+	this.description_author=$('#description_author');
+	this.description_name.html(scenario_dic.setting.name);
+	this.description_author.html('by '+scenario_dic.setting.author);
 }
 function News_box(){
 	this.el=$('#news_box');
@@ -943,7 +932,9 @@ function Unit(id){
 	}
 	this.move_cost=function(mn,surplus){
 			var hex=hex_d[mn];
-			var base_cost;
+			var base_cost=terrain_d[hex.terrain].base_cost;
+			//var base_cost;
+			/*
 			switch(hex.terrain){
 				case 'open':
 					base_cost=1;
@@ -951,7 +942,11 @@ function Unit(id){
 				case 'hill':
 					base_cost=3;
 					break;
+				case 'river'://按目前的设置就表示不可通行
+					base_cost=10;
+					break;
 			}
+			*/
 			//console.log(this.zoc_map(mn));
 			if (hex.unit!==null && hex.unit.side!==this.side){
 				return Math.max(surplus+1,1);//从而trick的禁止移动
@@ -1123,6 +1118,7 @@ var hex_l=[];
 var hex_d={};//hex的key是它的坐标列表（字面量
 var player_l=[];
 var player_d={};
+var terrain_d=scenario_dic.terrain;
 
 var mat=create_hexs(scenario_dic['size'][0],scenario_dic['size'][1]);
 
@@ -1140,13 +1136,22 @@ scenario_dic['hex_dic_list'].forEach(function(_hex){
 	hex.capture=_hex.capture;
 	hex.unit=null;//正在占据此格的单位
 	hex.pass=null;//正在通过的单位
+	/*
 	switch (hex.terrain){
 		case 'open':
 			hex.set_color([100,200,100]);
 			break;
 		case 'hill':
 			hex.set_color([200,200,100]);
+			break;
+		case 'river':
+			hex.set_color([50,50,250]);
+			break;
 	}
+	*/
+	var terr=terrain_d[hex.terrain];
+	console.log(terr);
+	hex.set_color([terr.R,terr.G,terr.B]);
 	
 	hex_l.push(hex);
 	hex_d[[hex.m,hex.n]]=hex;
@@ -1191,6 +1196,7 @@ scenario_dic['unit_dic_list'].forEach(function(_unit){
 	unit.set_font_color(_unit.color.font);
 	unit.set_pad_color(_unit.color.pad_back);
 	unit.set_pad_line_color(_unit.color.pad_line);
+	unit.els.size.html(_unit.size);
 	unit.deco();
 	unit.set_hex(unit.m,unit.n);
 	unit.ready();

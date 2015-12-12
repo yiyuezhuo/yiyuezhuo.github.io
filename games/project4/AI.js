@@ -1,29 +1,26 @@
 function AI_box_class(){
 	//该对象应该根据AI命令提供AI_goal所需的数据
-	this.group_map={};
+	this.init_map={};//init map指定
+	this.pursuit_group={};
 	var that=this;
 	this.setup=function(command_list){
 		command_list.forEach(function(command){
 			switch(command[0]){
 				case 'init':
-					that.group_map[command[1]]=[command[2],command[3]];
+					that.init_map[command[1]]=[command[2],command[3]];
 					break;
 			}
 		})
+	}
+	this.unit_goal=function(unit){
+		return this.init_map[unit.group];
 	}
 }
 
 function AI_goal(unit){
 	//这个函数映射单位（如果它寻求AI的帮助的话）到它的目标上，为了测试这里直接隔断。
-	/*
-	if (unit.side===1){
-		return [0,0];
-	}
-	else{
-		return [5,5];
-	}
-	*/
-	return AI_box.group_map[unit.group];
+	//return AI_box.group_map[unit.group];
+	return AI_box.unit_goal(unit);
 }
 
 function AI_unit_move(unit){

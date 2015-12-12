@@ -58,8 +58,16 @@ function routed(unit_id){
 	var unit=unit_d[unit_id];
 	var loc=hex_d[[unit.m,unit.n]];
 	var ava=loc.nei.filter(function(nei_id){
-		if (hex_d[nei_id].unit===null && !(unit.zoc_map(nei_id)[unit.side])){
-			return true;
+		if (hex_d[nei_id].unit===null && !(unit.zoc_map(nei_id)[unit.side])){//如果该格没有其他单位并且不在敌方ZOC中
+			//return true;
+			//if (hex_d[nei_id])
+			if (unit.movement>=terrain_d[hex_d[nei_id].terrain].base_cost){//只有正常情况下能移入才行
+				return true;
+			}
+			else{
+				return false;
+			}
+			//return true;
 		}
 		else{
 			return false;
