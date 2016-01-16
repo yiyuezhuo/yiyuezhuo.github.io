@@ -1,0 +1,6 @@
+[submodule "app/mini_markdown"]
+	path = app/mini_markdown
+	url = https://github.com/yiyuezhuo/mini-Markdown-MathJax-editor
+[submodule "games/sengokushi"]
+	path = games/sengokushi
+	url = https://github.com/yiyuezhuo/sengokushi-port-javascript.git
