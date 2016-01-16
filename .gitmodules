@@ -1,6 +1,0 @@
-[submodule "app/mini_markdown"]
-	path = app/mini_markdown
-
-[submodule "games/sengokushi"]
-	path = games/sengokushi
-	url = https://github.com/yiyuezhuo/sengokushi-port-javascript
