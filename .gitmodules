@@ -4,3 +4,6 @@
 [submodule "games/sengokushi"]
 	path = games/sengokushi
 	url = https://github.com/yiyuezhuo/sengokushi-port-javascript.git
+[submodule "app/function_plot"]
+	path = app/function_plot
+	url = https://github.com/yiyuezhuo/function-plot.git
