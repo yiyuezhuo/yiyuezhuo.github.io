@@ -1,0 +1,9 @@
+body {
+	background: #f4f7f8;
+}
+
+#content {
+	padding-left:151px;
+	max-width:800px;
+	line-height:1.54;
+}
