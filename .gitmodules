@@ -7,3 +7,6 @@
 [submodule "app/function_plot"]
 	path = app/function_plot
 	url = https://github.com/yiyuezhuo/function-plot.git
+[submodule "research/party-text-research"]
+	path = research/party-text-research
+	url = https://github.com/yiyuezhuo/party-text-research.git
