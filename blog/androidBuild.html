@@ -26,5 +26,75 @@
 <li>在android studio里run并用老模拟器运行</li>
 </ul>
 <p>done</p>
+<p>No.. not done.事实上我的电脑根本不能同时打开Android Studio,Chrome与模拟器。所以我只能真机调试</p>
+<p>为了真机调试,除了在手机打开开发模式，打开usb以外，最重要的是在sdk manager那里下Google USB driver,
+然后到我的电脑属性-所有设备那里给手机手动加Google那个驱动。过程如这篇文章所述http://www.07net01.com/2015/07/875558.html</p>
+<div>
+android Studio关于USB device not found的解决办法
+我们使用Android Studio进行Android开发时，当我们使用真机进行调试时，很可能会出现USB device not found的问题。网上提出了很多决解办法，很多都是错误的。现给出正确的解决方法：
+
+1. If yon don’t have Android SDK installed, please install it first. 
+2. Open Start menu. Select Android SDK Tools -> SDK Manager. Right-click on it and select “Run as Administrator”.
+
+这里写图片描述
+
+Running SDK Manager as Administrator is very important. If you just click on it, the SDK manager will start, but will encounter errors when you try to install new components!
+3. In the SDK Manager select “Extras->Google USB Driver”. Enable the checkbox and click “Install 1 package”.
+
+这里写图片描述
+
+4. When the Google USB driver is installed, plug in your device.
+
+Warning: The driver won’t install automatically. We will do it manually in the next steps.
+5. Open the system Properties dialog (press Win+Break on the keyboard or locate “Computer” in Start Menu, right-click on it and select “Properties”.
+
+6. Click on the “Device Manager” link.
+
+这里写图片描述
+
+7. In the Device Manager locate your Android device. Then right-click on it and select “update Driver software”.
+
+这里写图片描述
+
+8. Select “Browse my computer for driver software”.
+
+这里写图片描述
+
+9. Select “Let me pick from a list of device drivers on my computer”.
+
+这里写图片描述
+
+10. Select “Show All Devices”.
+
+这里写图片描述
+
+11. Press the “Have Disk” button.
+
+这里写图片描述
+
+12. Enter the path to the Google USB driver. Normally it is located in the following directory:
+
+C:\Program Files (x86)\Android\android-sdk\extras\google\usb_driver
+
+这里写图片描述
+
+13. Select “Android ADB interface” from the list of device types.
+
+这里写图片描述
+
+14. Confirm the installation of the driver by pressing “Yes”.
+
+这里写图片描述
+
+15. Confirm the installation again by pressing “Install”.
+
+这里写图片描述
+
+16. When the installation is done, press “Close”.
+
+这里写图片描述
+
+
+</div>
 </body>
 </html>
