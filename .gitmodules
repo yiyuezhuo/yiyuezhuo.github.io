@@ -4,3 +4,9 @@
 [submodule "games/sengokushi"]
 	path = games/sengokushi
 	url = https://github.com/yiyuezhuo/sengokushi-port-javascript.git
+[submodule "app/function-plot"]
+	path = app/function-plot
+	url = https://github.com/yiyuezhuo/function-plot.git
+[submodule "research/party-text-research"]
+	path = research/party-text-research
+	url = https://github.com/yiyuezhuo/function-plot.git
