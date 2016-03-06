@@ -10,3 +10,6 @@
 [submodule "research/party-text-research"]
 	path = research/party-text-research
 	url = https://github.com/yiyuezhuo/function-plot.git
+[submodule "research/part-text-research"]
+	path = research/part-text-research
+	url = https://github.com/yiyuezhuo/party-text-research.git
