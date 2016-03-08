@@ -18,3 +18,7 @@
 path = research/party-text-research
 	
 url = https://github.com/yiyuezhuo/party-text-research.git
+
+[submodule "games/Hex-Wargame-JavaScript"]
+	path = games/Hex-Wargame-JavaScript
+	url = https://github.com/yiyuezhuo/Hex-Wargame-JavaScript.git
